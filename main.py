@@ -45,41 +45,34 @@ class Figure:
         self.type = type
         self.centre_x = 5
         self.centre_y = 0
+        self.pose = 0
         if self.type == 'Z':
-            self.elements = [[self.centre_y + 1, self.centre_x - 1],
-                             [self.centre_y + 1, self.centre_x],
-                             [self.centre_y, self.centre_x],
-                             [self.centre_y, self.centre_x + 1]]
+            self.poses_elements = (((1, 1), (1, 0), (0, 0), (0, -1)),
+                                   ((-1, 1), (0, 1), (0, 0), (1, 0)))
         elif self.type == 'reverse_Z':
-            self.elements = [[self.centre_y + 1, self.centre_x + 1],
-                             [self.centre_y + 1, self.centre_x],
-                             [self.centre_y, self.centre_x],
-                             [self.centre_y, self.centre_x - 1]]
+            self.poses_elements = (((1, -1), (1, 0), (0, 0), (0, 1)),
+                                   ((1, 1), (0, 1), (0, 0), (-1, 0)))
         elif self.type == 'L':
-            self.elements = [[self.centre_y + 1, self.centre_x - 1],
-                             [self.centre_y, self.centre_x - 1],
-                             [self.centre_y, self.centre_x],
-                             [self.centre_y, self.centre_x + 1]]
+            self.poses_elements = (((1, -1), (0, -1), (0, 0), (0, 1)),
+                                   ((-1, -1), (-1, 0), (0, 0), (1, 0)),
+                                   ((-1, 1), (0, 1), (0, 0), (0, -1)),
+                                   ((1, 1), (1, 0), (0, 0), (-1, 0)))
         elif self.type == 'reverse_L':
-            self.elements = [[self.centre_y + 1, self.centre_x + 1],
-                             [self.centre_y, self.centre_x + 1],
-                             [self.centre_y, self.centre_x],
-                             [self.centre_y, self.centre_x - 1]]
+            self.poses_elements = (((1, 1), (0, 1), (0, 0), (0, -1)),
+                                   ((1, -1), (1, 0), (0, 0), (-1, 0)),
+                                   ((-1, -1), (0, -1), (0, 0), (0, 1)),
+                                   ((-1, 1), (-1, 0), (0, 0), (1, 0)))
         elif self.type == 'I':
-            self.elements = [[self.centre_y, self.centre_x - 2],
-                             [self.centre_y, self.centre_x - 1],
-                             [self.centre_y, self.centre_x],
-                             [self.centre_y, self.centre_x + 1]]
+            self.poses_elements = (((0, -2), (0, -1), (0, 0), (0, 1)),
+                                   ((-2, 0), (-1, 0), (0, 0), (1, 0)))
         elif self.type == 'cube':
-            self.elements = [[self.centre_y + 1, self.centre_x - 1],
-                             [self.centre_y, self.centre_x - 1],
-                             [self.centre_y, self.centre_x],
-                             [self.centre_y + 1, self.centre_x]]
+            self.poses_elements = (((1, -1), (0, -1), (0, 0), (1, 0)),)
         elif self.type == 'triple':
-            self.elements = [[self.centre_y, self.centre_x - 1],
-                             [self.centre_y, self.centre_x + 1],
-                             [self.centre_y, self.centre_x],
-                             [self.centre_y + 1, self.centre_x]]
+            self.poses_elements = (((0, -1), (0, 1), (0, 0), (1, 0)),
+                                   ((-1, 0), (1, 0), (0, 0), (0, -1)),
+                                   ((0, -1), (0, 1), (0, 0), (-1, 0)),
+                                   ((-1, 0), (1, 0), (0, 0), (0, 1)))
+        self.get_elements()
 
     def can_go_right(self):
         for i in self.elements:
@@ -93,17 +86,23 @@ class Figure:
                 return False
         return True
 
-    def can_rotate_clockwise(self):
-        pass
-
-    def can_rotate_counterclockwise(self):
-        pass
-
     def rotate_clockwise(self):
-        pass
+        self.pose += 1
+        self.pose %= len(self.poses_elements)
+        self.get_elements()
+        for i in self.elements:
+            if i[0] >= 20 or i[1] >= 10 or i[1] < 0 or board.board[i[0]][i[1]]:
+                self.rotate_counterclockwise()
+                break
 
     def rotate_counterclockwise(self):
-        pass
+        self.pose -= 1
+        self.pose %= len(self.poses_elements)
+        self.get_elements()
+        for i in self.elements:
+            if i[0] >= 20 or i[1] >= 10 or i[1] < 0 or board.board[i[0]][i[1]]:
+                self.rotate_clockwise()
+                break
 
     def fall(self):
         for i in self.elements:
@@ -122,6 +121,11 @@ class Figure:
             pygame.draw.rect(screen, 'white', (board.left + i[1] * board.cell_size,
                                                board.top + i[0] * board.cell_size,
                                                board.cell_size, board.cell_size), 1)
+
+    def get_elements(self):
+        self.elements = []
+        for i in self.poses_elements[self.pose]:
+            self.elements.append([self.centre_y + i[0], self.centre_x + i[1]])
 
 
 def game_over():
@@ -154,7 +158,7 @@ if __name__ == '__main__':
                     if figure.can_go_left():
                         for i in figure.elements:
                             i[1] -= 1
-                            figure.centre_x -= 1
+                        figure.centre_x -= 1
                         screen.fill((0, 0, 0))
                         figure.draw()
                         board.render()
@@ -168,8 +172,14 @@ if __name__ == '__main__':
                         figure.draw()
                         board.render()
                         pygame.display.flip()
-                if event.key == pygame.K_UP:
-                    pass
+                if event.key == pygame.K_a:
+                    figure.rotate_counterclockwise()
+                if event.key == pygame.K_z:
+                    figure.rotate_counterclockwise()
+                if event.key == pygame.K_s:
+                    figure.rotate_clockwise()
+                if event.key == pygame.K_x:
+                    figure.rotate_clockwise()
                 if event.key == pygame.K_DOWN:
                     figure.fall()
         if count == need_count:
