@@ -1,8 +1,26 @@
 import pygame
+import os
 from random import choice
+pygame.init()
+pygame.display.set_caption('Тетрис')
+size = width, height = (1280, 960)
+screen = pygame.display.set_mode(size)
+
+
+def load_image(name, color_key=None):
+    fullname = os.path.join('data', name)
+    image = pygame.image.load(fullname)
+    if color_key is not None:
+        if color_key == -1:
+            color_key = image.get_at((0, 0))
+        image.set_colorkey(color_key)
+    else:
+        image = image.convert_alpha()
+    return image
 
 
 FIGURES = ['Z', 'reverse_Z', 'L', 'reverse_L', 'I', 'cube', 'triple']
+CUBE_IMAGE = load_image('cube.png')
 
 
 class Board:
@@ -32,12 +50,13 @@ class Board:
         for i in range(self.height):
             for j in range(self.width):
                 if board.board[i][j]:
-                    pygame.draw.rect(screen, self.board[i][j], (self.left + j * self.cell_size,
-                                                                self.top + i * self.cell_size,
-                                                                self.cell_size, self.cell_size), 0)
-                    pygame.draw.rect(screen, 'white', (self.left + j * self.cell_size,
-                                                       self.top + i * self.cell_size,
-                                                       self.cell_size, self.cell_size), 1)
+                    if i >= 0:
+                        sprite = pygame.sprite.Sprite()
+                        sprite.image = CUBE_IMAGE
+                        sprite.rect = sprite.image.get_rect()
+                        sprite.rect.x = board.left + j * board.cell_size
+                        sprite.rect.y = board.top + i * board.cell_size
+                        cubes_sprites.add(sprite)
 
 
 class Figure:
@@ -91,7 +110,7 @@ class Figure:
         self.pose %= len(self.poses_elements)
         self.get_elements()
         for i in self.elements:
-            if i[0] >= 20 or i[1] >= 10 or i[1] < 0 or board.board[i[0]][i[1]]:
+            if i[0] >= 20 or i[1] >= 10 or i[1] < 0 or (board.board[i[0]][i[1]] and i[0] >= 0):
                 self.rotate_counterclockwise()
                 break
 
@@ -100,7 +119,7 @@ class Figure:
         self.pose %= len(self.poses_elements)
         self.get_elements()
         for i in self.elements:
-            if i[0] >= 20 or i[1] >= 10 or i[1] < 0 or board.board[i[0]][i[1]]:
+            if i[0] >= 20 or i[1] >= 10 or i[1] < 0 or (board.board[i[0]][i[1]] and i[0] >= 0):
                 self.rotate_clockwise()
                 break
 
@@ -113,14 +132,15 @@ class Figure:
         self.centre_y += 1
         return True
 
-    def draw(self):
+    def render(self):
         for i in self.elements:
-            pygame.draw.rect(screen, 'blue', (board.left + i[1] * board.cell_size,
-                                              board.top + i[0] * board.cell_size,
-                                              board.cell_size, board.cell_size), 0)
-            pygame.draw.rect(screen, 'white', (board.left + i[1] * board.cell_size,
-                                               board.top + i[0] * board.cell_size,
-                                               board.cell_size, board.cell_size), 1)
+            if i[0] >= 0:
+                sprite = pygame.sprite.Sprite()
+                sprite.image = CUBE_IMAGE
+                sprite.rect = sprite.image.get_rect()
+                sprite.rect.x = board.left + i[1] * board.cell_size
+                sprite.rect.y = board.top + i[0] * board.cell_size
+                cubes_sprites.add(sprite)
 
     def get_elements(self):
         self.elements = []
@@ -133,22 +153,20 @@ def game_over():
 
 
 if __name__ == '__main__':
-    pygame.init()
-    pygame.display.set_caption('Тетрис')
-    size = width, height = (1280, 960)
-    screen = pygame.display.set_mode(size)
     board = Board(10, 20)
     board.set_view(480, 100, 35)
     next_figure = Figure(choice(FIGURES))
     figure = Figure(choice(FIGURES))
-    figure.draw()
+    cubes_sprites = pygame.sprite.Group()
+    figure.render()
+    cubes_sprites.draw(screen)
     pygame.display.flip()
     clock = pygame.time.Clock()
-    need_count = 60
+    need_count = 120
     count = 0
     running = True
     while running:
-        clock.tick(60)
+        clock.tick(120)
         count += 1
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -160,8 +178,10 @@ if __name__ == '__main__':
                             i[1] -= 1
                         figure.centre_x -= 1
                         screen.fill((0, 0, 0))
-                        figure.draw()
+                        cubes_sprites = pygame.sprite.Group()
+                        figure.render()
                         board.render()
+                        cubes_sprites.draw(screen)
                         pygame.display.flip()
                 if event.key == pygame.K_RIGHT:
                     if figure.can_go_right():
@@ -169,8 +189,10 @@ if __name__ == '__main__':
                             i[1] += 1
                         figure.centre_x += 1
                         screen.fill((0, 0, 0))
-                        figure.draw()
+                        cubes_sprites = pygame.sprite.Group()
+                        figure.render()
                         board.render()
+                        cubes_sprites.draw(screen)
                         pygame.display.flip()
                 if event.key == pygame.K_a:
                     figure.rotate_counterclockwise()
@@ -203,7 +225,9 @@ if __name__ == '__main__':
                                     board.board[k][j] = board.board[k - 1][j]
                             board.board[0] = [False] * board.width
         screen.fill((0, 0, 0))
-        figure.draw()
+        cubes_sprites = pygame.sprite.Group()
+        figure.render()
         board.render()
+        cubes_sprites.draw(screen)
         pygame.display.flip()
     pygame.quit()
