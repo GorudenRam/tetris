@@ -125,7 +125,7 @@ class Figure:
 
     def fall(self):
         for i in self.elements:
-            if i[0] + 1 >= 20 or board.board[i[0] + 1][i[1]]:
+            if i[0] + 1 >= 20 or (board.board[i[0] + 1][i[1]] and i[0] + 1 >= 0):
                 return False
         for i in self.elements:
             i[0] += 1
