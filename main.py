@@ -95,15 +95,39 @@ class Figure:
 
     def can_go_right(self):
         for i in self.elements:
-            if i[1] + 1 >= 10 or board.board[i[0]][i[1] + 1]:
+            if i[1] + 1 >= 10 or (board.board[i[0]][i[1] + 1] and i[0] >= 0):
                 return False
         return True
 
     def can_go_left(self):
         for i in self.elements:
-            if i[1] - 1 < 0 or board.board[i[0]][i[1] - 1]:
+            if i[1] - 1 < 0 or (board.board[i[0]][i[1] - 1] and i[0] >= 0):
                 return False
         return True
+
+    def go_right(self):
+        global cubes_sprites
+        for i in self.elements:
+            i[1] += 1
+        self.centre_x += 1
+        screen.fill((0, 0, 0))
+        cubes_sprites = pygame.sprite.Group()
+        self.render()
+        board.render()
+        cubes_sprites.draw(screen)
+        pygame.display.flip()
+
+    def go_left(self):
+        global cubes_sprites
+        for i in self.elements:
+            i[1] -= 1
+        self.centre_x -= 1
+        screen.fill((0, 0, 0))
+        cubes_sprites = pygame.sprite.Group()
+        self.render()
+        board.render()
+        cubes_sprites.draw(screen)
+        pygame.display.flip()
 
     def rotate_clockwise(self):
         self.pose += 1
@@ -149,7 +173,21 @@ class Figure:
 
 
 def game_over():
-    pass
+    level = 1
+    need_count = ((0.8 - (level - 1) * 0.007) ** (level - 1)) * 120
+    count = 0
+    lines = 0
+    score = 0
+    for i in range(20):
+        for j in range(10):
+            board.board[i][j] = False
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    return
 
 
 if __name__ == '__main__':
@@ -162,8 +200,14 @@ if __name__ == '__main__':
     cubes_sprites.draw(screen)
     pygame.display.flip()
     clock = pygame.time.Clock()
-    need_count = 120
+    level = 1
+    need_count = ((0.8 - (level - 1) * 0.007) ** (level - 1)) * 120
     count = 0
+    score = 0
+    lines = 0
+    down_pressed = False
+    left_pressed = False
+    right_pressed = False
     running = True
     while running:
         clock.tick(120)
@@ -174,26 +218,16 @@ if __name__ == '__main__':
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     if figure.can_go_left():
-                        for i in figure.elements:
-                            i[1] -= 1
-                        figure.centre_x -= 1
-                        screen.fill((0, 0, 0))
-                        cubes_sprites = pygame.sprite.Group()
-                        figure.render()
-                        board.render()
-                        cubes_sprites.draw(screen)
-                        pygame.display.flip()
+                        figure.go_left()
+                        left_delay = 0
+                        right_pressed = False
+                        left_pressed = True
                 if event.key == pygame.K_RIGHT:
                     if figure.can_go_right():
-                        for i in figure.elements:
-                            i[1] += 1
-                        figure.centre_x += 1
-                        screen.fill((0, 0, 0))
-                        cubes_sprites = pygame.sprite.Group()
-                        figure.render()
-                        board.render()
-                        cubes_sprites.draw(screen)
-                        pygame.display.flip()
+                        figure.go_right()
+                        right_delay = 0
+                        left_pressed = False
+                        right_pressed = True
                 if event.key == pygame.K_a:
                     figure.rotate_counterclockwise()
                 if event.key == pygame.K_z:
@@ -204,26 +238,82 @@ if __name__ == '__main__':
                     figure.rotate_clockwise()
                 if event.key == pygame.K_DOWN:
                     figure.fall()
-        if count == need_count:
+                    down_delay = 0
+                    down_pressed = True
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_DOWN:
+                    down_pressed = False
+                if event.key == pygame.K_LEFT:
+                    left_pressed = False
+                if event.key == pygame.K_RIGHT:
+                    right_pressed = False
+        if down_pressed:
+            if down_delay < 60:
+                down_delay += 1
+                down_count = 0
+            elif down_count % 5 != 0:
+                down_count += 1
+            else:
+                down_count += 1
+                figure.fall()
+        if left_pressed:
+            if left_delay < 60:
+                left_delay += 1
+                left_count = 0
+            elif left_count % 10 != 0:
+                left_count += 1
+            else:
+                left_count += 1
+                if figure.can_go_left():
+                    figure.go_left()
+        if right_pressed:
+            if right_delay < 60:
+                right_delay += 1
+                right_count = 0
+            elif right_count % 10 != 0:
+                right_count += 1
+            else:
+                right_count += 1
+                if figure.can_go_right():
+                    figure.go_right()
+        if count >= need_count:
             count = 0
             if not figure.fall():
+                down_pressed = False
                 if board.board[0][5]:
                     game_over()
                 else:
+                    score += 30
                     for i in figure.elements:
                         board.board[i[0]][i[1]] = 'red'
                     figure = next_figure
                     next_figure = Figure(choice(FIGURES))
+                    now_lines = 0
                     for i in range(board.height):
                         is_full = True
                         for j in range(board.width):
                             if not board.board[i][j]:
                                 is_full = False
                         if is_full:
+                            lines += 1
+                            now_lines += 1
                             for k in range(i, 0, -1):
                                 for j in range(board.width):
                                     board.board[k][j] = board.board[k - 1][j]
                             board.board[0] = [False] * board.width
+                            level += lines // 8
+                            lines %= 8
+                            need_count = ((0.8 - (level - 1) * 0.007) ** (level - 1)) * 120
+                    score += [0, 100, 300, 700, 1500][now_lines]
+                    screen.fill((0, 0, 0))
+                    cubes_sprites = pygame.sprite.Group()
+                    figure.render()
+                    board.render()
+                    cubes_sprites.draw(screen)
+                    pygame.display.flip()
+                    for i in figure.elements:
+                        if board.board[i[0]][i[1]]:
+                            game_over()
         screen.fill((0, 0, 0))
         cubes_sprites = pygame.sprite.Group()
         figure.render()
