@@ -3,7 +3,8 @@ import os
 from random import choice
 pygame.init()
 pygame.display.set_caption('Тетрис')
-size = width, height = (1280, 960)
+size = width, height = (600, 900)
+font = pygame.font.Font(None, 80)
 screen = pygame.display.set_mode(size)
 
 
@@ -20,7 +21,11 @@ def load_image(name, color_key=None):
 
 
 FIGURES = ['Z', 'reverse_Z', 'L', 'reverse_L', 'I', 'cube', 'triple']
-CUBE_IMAGE = load_image('cube.png')
+CUBES_IMAGES = [pygame.transform.scale(load_image('cube.png'), (35, 35)),
+                pygame.transform.scale(load_image('cube1.png'), (35, 35)),
+                pygame.transform.scale(load_image('cube2.png'), (35, 35)),
+                pygame.transform.scale(load_image('cube3.png'), (35, 35))]
+FON_IMAGE = pygame.transform.scale(load_image('fon.png'), (600, 900))
 
 
 class Board:
@@ -49,10 +54,10 @@ class Board:
     def render(self):
         for i in range(self.height):
             for j in range(self.width):
-                if board.board[i][j]:
+                if self.board[i][j]:
                     if i >= 0:
                         sprite = pygame.sprite.Sprite()
-                        sprite.image = CUBE_IMAGE
+                        sprite.image = CUBES_IMAGES[self.board[i][j] - 1]
                         sprite.rect = sprite.image.get_rect()
                         sprite.rect.x = board.left + j * board.cell_size
                         sprite.rect.y = board.top + i * board.cell_size
@@ -65,6 +70,7 @@ class Figure:
         self.centre_x = 5
         self.centre_y = 0
         self.pose = 0
+        self.image_num = choice((1, 2, 3, 4))
         if self.type == 'Z':
             self.poses_elements = (((1, 1), (1, 0), (0, 0), (0, -1)),
                                    ((-1, 1), (0, 1), (0, 0), (1, 0)))
@@ -111,7 +117,7 @@ class Figure:
             i[1] += 1
         self.centre_x += 1
         screen.fill((0, 0, 0))
-        cubes_sprites = pygame.sprite.Group()
+        screen.blit(screen2, (0, 0))
         self.render()
         board.render()
         cubes_sprites.draw(screen)
@@ -123,7 +129,7 @@ class Figure:
             i[1] -= 1
         self.centre_x -= 1
         screen.fill((0, 0, 0))
-        cubes_sprites = pygame.sprite.Group()
+        screen.blit(screen2, (0, 0))
         self.render()
         board.render()
         cubes_sprites.draw(screen)
@@ -157,14 +163,27 @@ class Figure:
         return True
 
     def render(self):
+        global cubes_sprites
+        cubes_sprites = pygame.sprite.Group()
         for i in self.elements:
             if i[0] >= 0:
                 sprite = pygame.sprite.Sprite()
-                sprite.image = CUBE_IMAGE
+                sprite.image = CUBES_IMAGES[self.image_num - 1]
                 sprite.rect = sprite.image.get_rect()
                 sprite.rect.x = board.left + i[1] * board.cell_size
                 sprite.rect.y = board.top + i[0] * board.cell_size
                 cubes_sprites.add(sprite)
+
+    def render_next(self):
+        global next_figure_sprites
+        next_figure_sprites = pygame.sprite.Group()
+        for i in self.elements:
+            sprite = pygame.sprite.Sprite()
+            sprite.image = pygame.transform.scale(CUBES_IMAGES[self.image_num - 1], (20, 20))
+            sprite.rect = sprite.image.get_rect()
+            sprite.rect.x = i[1] * 20 - 48
+            sprite.rect.y = 180 + i[0] * 20
+            next_figure_sprites.add(sprite)
 
     def get_elements(self):
         self.elements = []
@@ -173,11 +192,23 @@ class Figure:
 
 
 def game_over():
+    global level, need_count, count, lines, score
     level = 1
     need_count = ((0.8 - (level - 1) * 0.007) ** (level - 1)) * 120
     count = 0
     lines = 0
     score = 0
+    screen2.blit(FON_IMAGE, (0, 0))
+    next_figure.render_next()
+    next_figure_sprites.draw(screen2)
+    text = font.render(str(score), True, (255, 200, 0))
+    text_w = text.get_width()
+    text_h = text.get_height()
+    screen2.blit(text, (300 - text_w // 2, 35 - text_h // 2))
+    text = font.render(str(level), True, (230, 255, 0))
+    text_w = text.get_width()
+    text_h = text.get_height()
+    screen2.blit(text, (543 - text_w // 2, 200 - text_h // 2))
     for i in range(20):
         for j in range(10):
             board.board[i][j] = False
@@ -192,19 +223,33 @@ def game_over():
 
 if __name__ == '__main__':
     board = Board(10, 20)
-    board.set_view(480, 100, 35)
-    next_figure = Figure(choice(FIGURES))
-    figure = Figure(choice(FIGURES))
+    board.set_view(130, 151, 34)
     cubes_sprites = pygame.sprite.Group()
+    next_figure_sprites = pygame.sprite.Group()
+    next_figure = Figure(choice(FIGURES))
+    next_figure.render_next()
+    figure = Figure(choice(FIGURES))
     figure.render()
     cubes_sprites.draw(screen)
-    pygame.display.flip()
     clock = pygame.time.Clock()
     level = 1
     need_count = ((0.8 - (level - 1) * 0.007) ** (level - 1)) * 120
     count = 0
     score = 0
     lines = 0
+    screen2 = pygame.surface.Surface(size)
+    screen2.blit(FON_IMAGE, (0, 0))
+    next_figure_sprites.draw(screen2)
+    text = font.render(str(score), True, (255, 200, 0))
+    text_w = text.get_width()
+    text_h = text.get_height()
+    screen2.blit(text, (300 - text_w // 2, 35 - text_h // 2))
+    text = font.render(str(level), True, (230, 255, 0))
+    text_w = text.get_width()
+    text_h = text.get_height()
+    screen2.blit(text, (543 - text_w // 2, 200 - text_h // 2))
+    screen.blit(screen2, (0, 0))
+    pygame.display.flip()
     down_pressed = False
     left_pressed = False
     right_pressed = False
@@ -285,7 +330,7 @@ if __name__ == '__main__':
                 else:
                     score += 30
                     for i in figure.elements:
-                        board.board[i[0]][i[1]] = 'red'
+                        board.board[i[0]][i[1]] = figure.image_num
                     figure = next_figure
                     next_figure = Figure(choice(FIGURES))
                     now_lines = 0
@@ -306,7 +351,18 @@ if __name__ == '__main__':
                             need_count = ((0.8 - (level - 1) * 0.007) ** (level - 1)) * 120
                     score += [0, 100, 300, 700, 1500][now_lines]
                     screen.fill((0, 0, 0))
-                    cubes_sprites = pygame.sprite.Group()
+                    screen2.blit(FON_IMAGE, (0, 0))
+                    next_figure.render_next()
+                    next_figure_sprites.draw(screen2)
+                    text = font.render(str(score), True, (255, 200, 0))
+                    text_w = text.get_width()
+                    text_h = text.get_height()
+                    screen2.blit(text, (300 - text_w // 2, 35 - text_h // 2))
+                    text = font.render(str(level), True, (230, 255, 0))
+                    text_w = text.get_width()
+                    text_h = text.get_height()
+                    screen2.blit(text, (543 - text_w // 2, 200 - text_h // 2))
+                    screen.blit(screen2, (0, 0))
                     figure.render()
                     board.render()
                     cubes_sprites.draw(screen)
@@ -315,7 +371,7 @@ if __name__ == '__main__':
                         if board.board[i[0]][i[1]]:
                             game_over()
         screen.fill((0, 0, 0))
-        cubes_sprites = pygame.sprite.Group()
+        screen.blit(screen2, (0, 0))
         figure.render()
         board.render()
         cubes_sprites.draw(screen)
